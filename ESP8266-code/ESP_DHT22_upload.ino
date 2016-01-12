@@ -1,3 +1,11 @@
+/*
+ code for ESP8266 
+As of 2016-01-12  this needs the staging version of the ESP board manager:
+  http://arduino.esp8266.com/staging/package_esp8266com_index.json
+(released version throws the _sqrt error)
+
+
+*/
 #include <ESP8266WiFi.h>
 #include "DHT.h"
 
