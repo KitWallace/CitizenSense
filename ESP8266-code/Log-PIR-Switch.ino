@@ -113,7 +113,6 @@ void setup () {
   Serial.println("/");
 
 }
-
 void loop() {
     unsigned long now = millis();
     if (switch_changed) {
@@ -131,14 +130,12 @@ void loop() {
       Serial.print(now/1000);
       Serial.print(" PIR ");
       Serial.println(pir_on);
-      if (pir_on ) {
-          if (! pir_movement) {
+      pir_millis = now;
+      if (pir_on && ! pir_movement) {
               pir_movement = true;
               Serial.println(" movement");
               rtlog("movement",pir_movement);
           }
-      else pir_millis = now;
-      }
       pir_changed = false;
     }
     if ( ! pir_on && pir_movement && now - pir_millis > inactive_interval) {
