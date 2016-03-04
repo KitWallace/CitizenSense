@@ -6,39 +6,52 @@ const char* host = "kitwallace.co.uk";
 const char* streamId   = "stream";
 const char* privateKey = "pk";
 
-//switch is debounced 
-const int switch_pin = 4;
-volatile boolean switch_isClosed = true;  
-volatile boolean switch_changed = false;
-volatile unsigned long startMillis = 0;
+// sms
+char* myphone ="447421119309";
+char* sms_pin = "1564";
+
+
+// door switch is debounced 
+const int door_pin = 14;
+volatile boolean door_isClosed;  
+volatile boolean door_changed = false;
+volatile unsigned long start_ms;
+unsigned int door_ms;
 const long debounce_interval = 3 * 1000;  //3 seconds is OK for a door opening
+boolean warning_sent = false;
+const long door_wait = 30 * 1000;  // longer than 30 seconds in practice
 
 //pir  transition to no movement only after a period of inactivity
-const int pir_pin = 5;
-volatile boolean pir_on = false;
+const int pir_pin = 15;
+volatile boolean pir_active ;
 volatile boolean pir_changed = false;
-unsigned long pir_millis = 0;
+unsigned long pir_ms;
 boolean pir_movement = false;
-
+unsigned long movement_ms;
 const long inactive_interval = 60 * 1000;  // wait 60 seconds after pir false before signaling no activity
 
-void switch_change() {
+int seconds(long ms) {
+   return round(ms/1000); 
+}
+
+void door_change() {
 // ignore changes within debounce_interval
     unsigned long now = millis();
-    if (now - startMillis > debounce_interval) {
-        startMillis = now;
-        switch_isClosed = digitalRead(switch_pin);
-        switch_changed = true;
+    if (now - start_ms > debounce_interval) {
+        start_ms = now;
+        door_isClosed = digitalRead(door_pin);
+        door_changed = true;
     }  
 }
 
 void pir_change() {
-   pir_on= digitalRead(pir_pin);
+   pir_active= digitalRead(pir_pin);
    pir_changed= true;
 }
 
 void httpget(String url) {
    WiFiClient client;
+   url.replace(" ", "+");
    int httpPort = 80;
    while (true) {
     if (client.connect(host, httpPort)) break;
@@ -67,29 +80,31 @@ void httpget(String url) {
   Serial.println("closing connection");
 }
 
-void rtlog (char* field, boolean state) {
+void log_data(String params) {
    String url = "/rt/home.xq?_action=store&_id=";
    url += streamId;
-   url += "&_pk=";
-   url += privateKey;
-   url += String("&")+field+"=";
-   url += state;
-   httpget(url);
+   url += String("&_pk=")+ privateKey + "&";
+   url += params;
+   httpget(url); 
 }
 
+void send_sms(String text,char* destination) {
+  String url = String("/sms/xquery/sendsms.xq?pin=")+sms_pin+"&text="+text+"&destination="+destination;
+  httpget(url);
+}
 void setup () {
   Serial.begin(9600);
   delay(10);
 
  // set switch pin to be interrupt 
-  pinMode(switch_pin,OUTPUT);
-  attachInterrupt(digitalPinToInterrupt(switch_pin),switch_change,CHANGE);
-  Serial.println("using Reed switch in pin 4 (d1)");
+  pinMode(door_pin,OUTPUT);
+  attachInterrupt(digitalPinToInterrupt(door_pin),door_change,CHANGE);
+  Serial.println(String("Door switch on pin ") + door_pin);
   
  // set PIR pin to be interrupt 
   pinMode(pir_pin,INPUT);
   attachInterrupt(digitalPinToInterrupt(pir_pin),pir_change,CHANGE);
-  Serial.println("using PIR in pin 5 (d2)");
+  Serial.println(String("PIR on pin ") + pir_pin);
   
 // Connect to WiFi network
   Serial.println();
@@ -111,37 +126,57 @@ void setup () {
   Serial.print("http://");
   Serial.print(WiFi.localIP());
   Serial.println("/");
-
+  
+  // initialize states and time marks
+  unsigned long now = millis();
+  pir_ms=now;
+  pir_active = digitalRead(pir_pin);
+  door_ms=now;
+  door_isClosed = digitalRead(door_pin);
+  movement_ms=now;
+  start_ms=now;
 }
+
 void loop() {
-    unsigned long now = millis();
-    if (switch_changed) {
+    long now = millis();
+    
+    if (door_changed) {
       Serial.print(now/1000);
-      Serial.print(" Switch ");
-      Serial.print(switch_isClosed);
-      if (switch_isClosed) 
-            Serial.println(" door closed");
-      else 
-            Serial.println(" door open");
-            rtlog("door",switch_isClosed);
-      switch_changed=false;
+      Serial.print(" Door ");
+      Serial.print(door_isClosed);
+      log_data(String("door=") + door_isClosed + "&interval=" + seconds(now - door_ms) );
+      door_ms= now;
+      door_changed=false;
+      warning_sent=false;
     }
-    if (pir_changed){     
+    
+// if door has been left open for longer than door_wait then send SMS
+
+    if ( ! door_isClosed  && now - door_ms > door_wait && ! warning_sent) {
+          send_sms(String("door has been open for ")+seconds(now - door_ms)+ " seconds. Please shut it.",myphone);
+          Serial.println(" SMS warning sent");
+          warning_sent=true;
+    }
+     
+    if (pir_changed) {     
       Serial.print(now/1000);
       Serial.print(" PIR ");
-      Serial.println(pir_on);
-      pir_millis = now;
-      if (pir_on && ! pir_movement) {
+      Serial.println(pir_active);
+      if (pir_active && ! pir_movement) {
               pir_movement = true;
               Serial.println(" movement");
-              rtlog("movement",pir_movement);
-          }
+              log_data(String("empty=") + seconds(now - movement_ms));
+              movement_ms = now;
+           }
       pir_changed = false;
+      pir_ms = now;
     }
-    if ( ! pir_on && pir_movement && now - pir_millis > inactive_interval) {
+    
+    if ( ! pir_active && pir_movement && now - pir_ms > inactive_interval) {
           pir_movement=false;
           Serial.println(" no movement");
-          rtlog("movement",pir_movement);
+          log_data(String("occupied=") + seconds(now - movement_ms));;
+          movement_ms = now;
     }
           
 //
