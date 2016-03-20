@@ -12,13 +12,13 @@
 #define OFF 0
 #define UNKNOWN -1
 // WiFi connection 
-const char* ssid = "ssid";
-const char* password = "wifipw";
+const char* ssid = "BTHub3-M4GH";
+const char* password = "86857ef6df";
 
 // Data base connection
 const char* host = "kitwallace.co.uk";
-const char* data_streamId   = "streamid";
-const char* data_privateKey = "streampk";
+const char* data_streamId   = "MS-SW";
+const char* data_privateKey = "40bb2458-f058-4e93-9cac-53523d91136d";
 
 // Pins
 int TRANSMIT = 5;
@@ -40,7 +40,7 @@ int sw_state = UNKNOWN;
 int poll_seconds = 20;
 
 void httpGetLines(String url, String* lines) {
-// call the url and fill the array lines  with terminated lines 
+// call the url and put n \n terminated lines into the global array
 
    WiFiClient client;
    int httpPort = 80;
@@ -103,24 +103,25 @@ void loop() {
    httpGetLines(url,data);
    String timestamp = data[1];
    String request = data[2];
-
-   int sw_request = request.toInt();     // this defaults to 0 if not an integer
-   Serial.println(String("requested ") + sw_request);
-  
-   if (sw_state == UNKNOWN ||  (timestamp > lastTimestamp)) { // there has been a new command
-      if (sw_request == ON)  
-          mySwitch.switchOn(sw_group,sw_switch); 
-      else if (sw_request == OFF)
-          mySwitch.switchOff(sw_group,sw_switch);
-      else {
-         Serial.println(String("unknown request ") + sw_request);
-         return;
-      }
-      sw_state = sw_request; 
-      lastTimestamp = timestamp;
-      Serial.println(String("switched to ") + sw_state );
+   if (timestamp == "" &&  ! (request == "0" || request == "1")) 
+      Serial.println("request not valid") ;
+   else  {
+      int sw_request = request.toInt();     // this defaults to 0 if not an integer
+      Serial.println(String("requested ") + sw_request);
+      if (sw_state == UNKNOWN  ||  (timestamp > lastTimestamp)) { // there has been a new command
+          if (sw_request == ON)  
+             mySwitch.switchOn(sw_group,sw_switch); 
+          else if (sw_request == OFF)
+             mySwitch.switchOff(sw_group,sw_switch);
+          else {
+             Serial.println(String("unknown request ") + sw_request);
+             return;
+          }
+        sw_state = sw_request; 
+        lastTimestamp = timestamp;
+        Serial.println(String("switched to ") + sw_state );
+      } 
    }
-   
    delay(poll_seconds*1000);
 
 }
