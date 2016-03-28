@@ -36,10 +36,10 @@ void loop()
   int yRaw = readAxis(1);
   int zRaw = readAxis(2);
   
-  if (digitalRead(calibratePin) == LOW)
+  if (digitalRead(calibratePin) == LOW) {
     autoCalibrate(xRaw, yRaw, zRaw);
-/*  
-  Serial.print("Raw Ranges: X: ");
+   
+    Serial.print("Raw Ranges: X: ");
     Serial.print(xRawMin);
     Serial.print("-");
     Serial.print(xRawMax);
@@ -60,33 +60,27 @@ void loop()
     Serial.print(yRaw);
     Serial.print(", ");
     Serial.print(zRaw);
- */
-    // Convert raw values to 'milli-Gs"
-    long xScaled = map(xRaw, xRawMin, xRawMax, -1000, 1000);
-    long yScaled = map(yRaw, yRawMin, yRawMax, -1000, 1000);
-    long zScaled = map(zRaw, zRawMin, zRawMax, -1000, 1000);
+  }
   
-    // re-scale to gs and negated  
-    float xAccel = xScaled / 1000.0;
-    float yAccel = yScaled / 1000.0;
-    float zAccel = zScaled / 1000.0; 
-
-    Serial.print(xAccel);
-    Serial.print("G, ");
-    Serial.print(yAccel);
-    Serial.print("G, ");
-    Serial.print(zAccel);
-    Serial.print("G");
-    // convert to angles 
-
-    float pitch = getPitch(xAccel,yAccel,zAccel);
-    float roll = getRoll(xAccel,yAccel,zAccel);
-    Serial.print(" roll=");
-    Serial.print(roll);
-    Serial.print(", pitch= ");
-    Serial.println(pitch);
+  // Convert raw values to 'milli-Gs"
     
-    delay(intervalms);
+  long xMilliG = map(xRaw, xRawMin, xRawMax, -1000, 1000);
+  long yMilliG = map(yRaw, yRawMin, yRawMax, -1000, 1000);
+  long zMilliG = map(zRaw, zRawMin, zRawMax, -1000, 1000);
+  
+  // re-scale to gs and negated  
+  float xG = xMilliG / 1000.0;
+  float yG = yMilliG / 1000.0;
+  float zG = zMilliG / 1000.0; 
+
+  Serial.println(String("Accelerations :")+xG+"G, "+yG+ "G, "+ zG +"G");
+  // convert to pitch and roll 
+
+  float pitch = getPitch(xG,yG,zG);
+  float roll = getRoll(xG,yG,zG);
+  Serial.println(String("roll=")+roll+" pitch= "+pitch);
+    
+  delay(intervalms);
 
 }
 
@@ -98,13 +92,13 @@ int signum(float x) {
    if (x >= 0) return 1; else return -1;
 }
 
-float getPitch(float gX, float gY,float gZ) {
-   return asDegree(atan2(gX, sqrt(gY*gY + gZ*gZ))); 
+float getPitch(float xG, float yG,float zG) {
+   return asDegree(atan2(xG, sqrt(yG*yG + zG*zG))); 
 }
 
-float getRoll(float gX, float gY,float gZ) {
+float getRoll(float xG, float yG,float zG) {
     float mu= 0.01;
-    return asDegree(atan2(gY, signum(gZ) * sqrt(gZ*gZ + mu*gX*gX))); 
+    return asDegree(atan2(yG, signum(zG) * sqrt(zG*zG + mu*xG*xG))); 
 }
 
 int readAxis(int i) {
