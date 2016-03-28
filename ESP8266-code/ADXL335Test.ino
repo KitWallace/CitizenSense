@@ -74,11 +74,12 @@ void loop()
   float zG = zMilliG / 1000.0; 
 
   Serial.println(String("Accelerations :")+xG+"G, "+yG+ "G, "+ zG +"G");
-  // convert to pitch and roll 
+  // convert to pitch and roll and tilt from vertical
 
   float pitch = getPitch(xG,yG,zG);
   float roll = getRoll(xG,yG,zG);
-  Serial.println(String("roll=")+roll+" pitch= "+pitch);
+  float tilt = getTilt(xG,yG,zG);
+  Serial.println(String("roll=")+roll+" pitch= "+pitch +" tilt=" + tilt);
     
   delay(intervalms);
 
@@ -99,6 +100,10 @@ float getPitch(float xG, float yG,float zG) {
 float getRoll(float xG, float yG,float zG) {
     float mu= 0.01;
     return asDegree(atan2(yG, signum(zG) * sqrt(zG*zG + mu*xG*xG))); 
+}
+
+float getTilt(float xG, float yG,float zG) {
+    return asDegree(acos(zG/ sqrt(xG*xG + yG*yG + zG*zG))); 
 }
 
 int readAxis(int i) {
