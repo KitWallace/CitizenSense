@@ -1,3 +1,10 @@
+/*
+   See http://kitwallace.tumblr.com/post/141890535929/dust-sensor for details
+
+   Kit Wallace March 2016
+
+*/
+
 #include <RunningMedian.h>
 #include <ESP8266WiFi.h>
 
@@ -38,7 +45,7 @@ void loop(){
    int baseDigital = analogRead(dustPin);
    digitalWrite(ledPower,LOW); // power on the LED
    delayMicroseconds(waitToRead);
-   int readDigital =analogRead(dustPin); // read the dust value via pin 5 on the sensor
+   int readDigital =analogRead(dustPin); 
    delayMicroseconds(waitToTurnOff);
    digitalWrite(ledPower,HIGH); // turn the LED off
    int dustDigital = readDigital - baseDigital;
