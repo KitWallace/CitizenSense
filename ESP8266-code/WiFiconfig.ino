@@ -1,17 +1,18 @@
 /*
+ * on bootup attempt to read configuration from SPIFFS and connect
+ * 
  * When config button is pressed start accesspoint and interact with user to provide the 
  * required access point  credentials and other parameters
+ * save configuration to SPIFFS
  * Connect to the required access point and stop the server
  * 
  * In normal mode, collect data and send to the data store
  * 
- *
- * configuration needs to set the configuration in non-volatile store
- *  * 
  */
  
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h> 
+#include <FS.h>
 
 //temporary access point credentials
 
@@ -45,6 +46,15 @@ void setup() {
   pinMode(D1,INPUT);
   pinMode(D4,OUTPUT);
   digitalWrite(D4,HIGH);  // turn it off
+  bool result = SPIFFS.begin();
+  boolean loadOK;
+  loadOK = getConfiguration();
+  if (loadOK) {
+    wifi_connected = connectWiFi();
+  }
+  else {
+    wifi_connected = false;
+  }
 }
 
 void loop() {
@@ -84,12 +94,13 @@ void handleRequest() {
   ssid = getParam(req,"ssid");
   if (ssid != "") {
       password = getParam(req,"password");
-      stream_id = getParam(req,"stream-id");
-      stream_pk = getParam(req,"stream-pk");
+      stream_id = getParam(req,"stream_id");
+      stream_pk = getParam(req,"stream_pk");
       String doConnect = getParam(req,"connect");
       
       if (doConnect =="Yes" && ssid != "")  {
-      wifi_connected = connectWifi();
+      putConfiguration();
+      wifi_connected = connectWiFi();
       if (wifi_connected) {
           response = String("<h1>Connecting to access point Bye Bye</h1>");
   
@@ -112,8 +123,8 @@ void handleRequest() {
    response += "<form action='?'><table>";
    response += "<tr><td>SSID</td><td><input type='text' name='ssid' value='" + ssid +"'/></td></tr>";
    response += "<tr><td>PW</td><td><input type='text' name='password' value='" + password + "'/></td></tr>";
-   response += "<tr><td>stream id</td><td><input type='text' name='stream-id' value='" + stream_id + "'/></td></tr>";
-   response += "<tr><td>stream pk</td><td><input type='text' name='stream-pk' value='" + stream_pk + "'/></td></tr>";
+   response += "<tr><td>stream id</td><td><input type='text' name='stream_id' value='" + stream_id + "'/></td></tr>";
+   response += "<tr><td>stream pk</td><td><input type='text' name='stream_pk' value='" + stream_pk + "'/></td></tr>";
    response += "<tr><td>Connect</td><td><select name='connect'><option>No</option><option>Yes</option></select></td></tr>";
    response += "</table>";
    response += "<input type='submit' name='submit' />";
@@ -153,7 +164,7 @@ void startServer() {
   Serial.println("HTTP server started");
   
 }
-boolean connectWifi() {
+boolean connectWiFi() {
 // Connect to WiFi network
   Serial.println();
   Serial.println();
@@ -226,3 +237,31 @@ void blink(int n, int onms,int offms) {
       delay(offms);
     }
 }
+
+boolean getConfiguration() {
+     // open the file in write mode
+    File f = SPIFFS.open("/f.txt", "r");
+    if (!f) {
+      Serial.println("file open failed");
+      return false;
+    }
+    String line = f.readStringUntil('\n');
+    Serial.println(line);
+    ssid = getParam(line,"ssid");
+    password = getParam(line,"password");
+    stream_id = getParam(line,"stream_id");
+    stream_pk = getParam(line,"stream_pk");
+    return true;
+};
+
+void putConfiguration() {
+    // open the file in write mode
+    File f = SPIFFS.open("/f.txt", "w");
+    if (!f) {
+      Serial.println("file creation failed");
+    }
+    // write one URLstyle line
+    f.println(String("ssid=")+ssid +"&password="+password+"&stream_id="+stream_id+"&stream_pk="+stream_pk+"&");
+    f.close();
+};
+
