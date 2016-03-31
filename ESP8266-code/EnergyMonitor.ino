@@ -1,5 +1,6 @@
 /*
- *  Uses the ADS1115 ADC in differental mode to measure the voltage across a burden resistor
+ *  Uses the ADS1115 ADC in differental mode to measure the voltage across a burden resistor  generated from
+ *   a current sensor
  *  
  *  voltage values have be calibrated against a standard 60w bulb 
  *  
