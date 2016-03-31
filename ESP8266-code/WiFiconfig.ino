@@ -5,11 +5,9 @@
  * 
  * In normal mode, collect data and send to the data store
  * 
- * Todo
- *   configuration needs to set the configuration in non-volatile store
- *   wifi connection failure not quite handled correctly yet
- *   need to flash the led when connected and data flowing
- * 
+ *
+ * configuration needs to set the configuration in non-volatile store
+ *  * 
  */
  
 #include <ESP8266WiFi.h>
@@ -29,8 +27,12 @@ String ssid;
 String password;
 String stream_id;
 String stream_pk;
-
 char* host ="kitwallace.co.uk";
+
+
+// interaction
+//const int startAP = D1;
+const int LED = D4;
 
 WiFiServer server(80);
 WiFiClient client;
@@ -39,6 +41,10 @@ void setup() {
 	delay(1000);
 	Serial.begin(9600);
   Serial.println(String("ap started: ") + ap_started + " WiFi connected: " + wifi_connected); 
+
+  pinMode(D1,INPUT);
+  pinMode(D4,OUTPUT);
+  digitalWrite(D4,HIGH);  // turn it off
 }
 
 void loop() {
@@ -139,6 +145,7 @@ void startAP() {
   IPAddress ap_IP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(ap_IP);
+  blink(2,500,500);
 }
 
 void startServer() {
@@ -166,6 +173,7 @@ boolean connectWifi() {
   }
   Serial.println("");
   Serial.println("WiFi connected");
+  blink(4,500,200);
   return true;
 }
 
@@ -208,4 +216,13 @@ void logData(String params) {
    url += "&";
    url += params;
    httpGet(host,url); 
+}
+
+void blink(int n, int onms,int offms) {
+    for (int i =0;i <n; i++) {
+      digitalWrite(LED,LOW);
+      delay(onms);
+      digitalWrite(LED,HIGH);
+      delay(offms);
+    }
 }
