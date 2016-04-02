@@ -1,8 +1,8 @@
 /*
- *  Uses the ADS1115 ADC in differental mode to measure the voltage across a burden resistor  generated from
- *   a current sensor
+ *  Uses the ADS1115 ADC in differental mode to measure the voltage across a burden resistor
  *  
  *  voltage values have be calibrated against a standard 60w bulb 
+ *  
  *  
  */
 
@@ -12,13 +12,13 @@
 
 
 // WIFI credentials
-const char* ssid     = "BTHub3-M4GH";
-const char* password = "86857ef6df";
+const char* ssid     = "ssid";
+const char* password = "pw";
 
 // Data stream
 const char* host = "kitwallace.co.uk";
-const char* streamId   = "MS-MQ3";
-const char* privateKey = "a7fba854-a7b7-4b79-a73a-eb951def1c51";
+const char* streamId   = "streamid";
+const char* privateKey = "streampk";
 
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 
@@ -27,6 +27,7 @@ WiFiClient client;
 // calibration
 // simple calibration with a 60w lightbulb  
 float multiplier = 0.01;   
+int n_samples = 1024;
 
 void setup() {
   Serial.begin(9600);
@@ -49,23 +50,27 @@ void setup() {
 }
 
 void loop() {  
-  double current = getIrms(1024);
-  String params = String("Current=")+current;
+  float current;
+  int ms ;
+  getIrms(n_samples, current, ms);
+  String params = String("current=")+current+"&ms="+ms;
   logData(params);
-  Serial.println(params);
 }
 
-double getIrms(unsigned int Number_of_Samples)
+void getIrms(unsigned int Number_of_Samples,float &Irms,int &Ims)
 {
-  double sum = 0.0;
-  double sum2 = 0.0;
+  long startms = millis();
+  long sum = 0;
+  long sum2 = 0;
   for (int n = 0; n < Number_of_Samples; n++)
   {
-    long sampleI = ads.readADC_Differential_0_1();
+    int sampleI = ads.readADC_Differential_0_1();
     sum += sampleI;
     sum2+= sampleI * sampleI;
   }  
-  return sqrt( (sum2 - (sum * sum)/Number_of_Samples) / Number_of_Samples)* multiplier; 
+  Ims = millis() - startms;
+  Irms = sqrt( (sum2 - (sum * sum)/Number_of_Samples) / Number_of_Samples)* multiplier; 
+  Serial.println(String("elapsed time ") + Ims +" sum " + sum + " sum2 " + sum2 + " current=" + Irms);
 }
 
 void httpGet(String url) {
@@ -90,7 +95,7 @@ void httpGet(String url) {
 // Read all the lines of the reply from server and print them to Serial
   while(client.available()){
     String line = client.readStringUntil('\r');
-//    Serial.print(line);
+    Serial.print(line);
   }
   
 //  Serial.println();
