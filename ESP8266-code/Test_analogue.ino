@@ -49,8 +49,7 @@ void gatherStats() {
   float stddev = sqrt((sum2 - (sum1 * sum1) / samples) / (samples - 1));
   Serial.println(String("Statistics for ") + samples + " samples");
   Serial.println(String("mean =")+ mean + " StdDev= " + stddev + " 95% interval = " + (mean - 2 * stddev) + "," + (mean+ 2 * stddev));
-  if (digitalRead(LOGON) ==1 )
-      log_data(String("average=")+mean+"&stddev="+stddev);
+
 
 }
 
