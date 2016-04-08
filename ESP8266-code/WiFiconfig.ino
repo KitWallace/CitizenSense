@@ -1,7 +1,7 @@
 /*
  * on bootup attempt to read configuration from SPIFFS and connect
  * 
- * When config button is pressed start accesspoint and interact with user to provide the 
+ * When pin CONFIG (D7) high start accesspoint and interact with user to provide the 
  * required access point  credentials and other parameters
  * save configuration to SPIFFS
  * Connect to the required access point and stop the server
@@ -16,7 +16,7 @@
 
 //temporary access point credentials
 
-const char * ap_ssid = "tempap";
+const char * ap_ssid = "espap";
 const char * ap_password = "1212121212";  // must be 8 characters or more
 
 // application status
@@ -29,36 +29,40 @@ String password;
 String stream_id;
 String stream_pk;
 char* host ="kitwallace.co.uk";
-
+char* path ="/rt/home.xq?";
 
 // interaction
-//const int startAP = D1;
+const int CONFIG = D7;
 const int LED = D4;
 
 WiFiServer server(80);
 WiFiClient client;
 
 void setup() {
-	delay(1000);
-	Serial.begin(9600);
+
+  Serial.begin(9600);
+    delay(1000);
+  Serial.println();
   Serial.println(String("ap started: ") + ap_started + " WiFi connected: " + wifi_connected); 
 
-  pinMode(D1,INPUT);
-  pinMode(D4,OUTPUT);
-  digitalWrite(D4,HIGH);  // turn it off
+  pinMode(CONFIG,INPUT);
+  pinMode(LED,OUTPUT);
+  digitalWrite(LED,HIGH);  // turn it off
   bool result = SPIFFS.begin();
   boolean loadOK;
   loadOK = getConfiguration();
   if (loadOK) {
-    wifi_connected = connectWiFi();
+     Serial.println("Configuration loaded");
+     wifi_connected = connectWiFi();
   }
   else {
-    wifi_connected = false;
+     Serial.println("No configuration found");
+     wifi_connected = false;
   }
 }
 
 void loop() {
-  if (! ap_started && digitalRead(D1)) {
+  if (! ap_started && (digitalRead(CONFIG) || ! wifi_connected)) {
     startAP();
     startServer();
     ap_started = true;
@@ -84,15 +88,18 @@ void loop() {
 
 void handleRequest() {
   Serial.println(String("request received ")+millis());
- 
-  // Read the first line of the request
   String req = client.readStringUntil('\r');
-  Serial.println(req);
+  while(client.available()){
+    req = client.readStringUntil('\r');
+    Serial.print(req);
+  }
+// form data is the last line 
   client.flush();
   String response;
   String message = "";
-  ssid = getParam(req,"ssid");
-  if (ssid != "") {
+  String somessid = getParam(req,"ssid");
+  if (somessid != "") {
+      ssid =getParam(req,"ssid");
       password = getParam(req,"password");
       stream_id = getParam(req,"stream_id");
       stream_pk = getParam(req,"stream_pk");
@@ -120,7 +127,7 @@ void handleRequest() {
    response += "<h1>Configuration Form</h1>";
    if (message != "") 
           response += "<h2>" + message + "</h2>";
-   response += "<form action='?'><table>";
+   response += "<form action='?' method='post'><table>";
    response += "<tr><td>SSID</td><td><input type='text' name='ssid' value='" + ssid +"'/></td></tr>";
    response += "<tr><td>PW</td><td><input type='text' name='password' value='" + password + "'/></td></tr>";
    response += "<tr><td>stream id</td><td><input type='text' name='stream_id' value='" + stream_id + "'/></td></tr>";
@@ -179,8 +186,8 @@ boolean connectWiFi() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    if (tries > 10) return false;
-    tries ++;
+    tries++;
+    if (tries > 25 ) return false;
   }
   Serial.println("");
   Serial.println("WiFi connected");
@@ -188,9 +195,10 @@ boolean connectWiFi() {
   return true;
 }
 
-void httpGet(char * host,String url) {
+
+void httpPost(char* host, char* path, String data) {
    WiFiClient client;
-   url.replace(" ", "+");
+   data.replace(" ", "+");
    int httpPort = 80;
    while (true) {
     if (client.connect(host, httpPort)) break;
@@ -199,12 +207,14 @@ void httpGet(char * host,String url) {
   }
   
   Serial.println("connected ");
-  Serial.print("requesting URL: ");
-  Serial.println(url);
+  Serial.println(String("Host=") + host + " path=" + path + " data=" + data);
 // This will send the request to the server
-  String httprequest = String("GET ") + url + " HTTP/1.1\r\n" +
+  String httprequest = String("POST ") + path + " HTTP/1.1\r\n" +
                "Host: " + host + "\r\n" + 
-               "Connection: close\r\n\r\n";
+               "Content-Type: application/x-www-form-urlencoded\r\n"
+               "Connection: close\r\n" +
+               "Content-Length:"+ data.length() +"\r\n\r\n" +
+               data;
 // Serial.println(httprequest);
   client.print(httprequest);
   delay(100);
@@ -220,13 +230,13 @@ void httpGet(char * host,String url) {
 }
 
 void logData(String params) {
-   String url = "/rt/home.xq?_action=store&_id=";
+   String url = "_action=store&_id=";
    url += stream_id;
    url += "&_pk=";
    url += stream_pk;
    url += "&";
    url += params;
-   httpGet(host,url); 
+   httpPost(host,path,url); 
 }
 
 void blink(int n, int onms,int offms) {
@@ -264,4 +274,3 @@ void putConfiguration() {
     f.println(String("ssid=")+ssid +"&password="+password+"&stream_id="+stream_id+"&stream_pk="+stream_pk+"&");
     f.close();
 };
-
