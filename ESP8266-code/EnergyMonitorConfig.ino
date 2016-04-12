@@ -111,10 +111,10 @@ void handleRequest() {
   }
 // form data is the last line 
   client.flush();
+  String message;
   String response;
-  String message = "";
-  String somessid = getParam(req,"ssid");
-  if (somessid != "") {
+  String reply = getParam(req,"ssid");
+  if (reply != "") {
       ssid =getParam(req,"ssid");
       password = getParam(req,"password");
       stream_id = getParam(req,"stream_id");
@@ -122,18 +122,16 @@ void handleRequest() {
       String doConnect = getParam(req,"connect");
       
       if (doConnect =="Yes" && ssid != "")  {
-      putConfiguration();
-      wifi_connected = connectWiFi();
-      if (wifi_connected) {
-          response = String("<h1>Connecting to access point Bye Bye</h1>");
-  
-          httpReturn(response);
-          // stop the ap - how ?
-          ap_started = false;
-          // stop the server - how ?
-          return;
+         response= String("<div><h1>trying to connect</h1> If it fails, you will have to close the connection and reconnect</div>");
+         httpReturn(response);
+         delay(1000);
+         wifi_connected = connectWiFi();
+         ap_started= false;
+         if (wifi_connected){
+           putConfiguration();
+         }
+         return;
       }
-      message = "Wifi not connected";
      }
   }
 // return form 
@@ -173,6 +171,7 @@ void httpReturn(String response) {
 void startAP() {
   Serial.println("Configuring access point...");
   Serial.println(String("ssid ")+ap_ssid+" password "+ ap_password);
+  WiFi.disconnect();
   boolean result = WiFi.softAP(ap_ssid, ap_password);
   Serial.println(String("SoftAP return ") + result);
   delay(100);
@@ -202,9 +201,12 @@ boolean connectWiFi() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
+    blink(4,5,10);
     tries++;
-    if (tries > 25 ) return false;
+    if (tries > 20 ) 
+      return false;
   }
+
   Serial.println("");
   Serial.println("WiFi connected");
   blink(2,100,500);
