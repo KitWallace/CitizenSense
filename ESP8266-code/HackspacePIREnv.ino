@@ -80,7 +80,7 @@ void loop() {
    float humidity =htu.readHumidity();
 
 // log the data
-   String data =String("occupied=") + pir_active+"&rssi="+rssi+"&temperatureC"+temp +"&humidity" + humidity;  
+   String data =String("occupied=") + pir_active+"&rssi="+rssi+"&temperatureC="+temp +"&humidity=" + humidity;  
    Serial.println(data);
    log_data(data);
    if (pir_active = 1)
