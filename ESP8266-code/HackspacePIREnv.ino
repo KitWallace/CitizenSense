@@ -83,7 +83,7 @@ void loop() {
    String data =String("occupied=") + pir_active+"&rssi="+rssi+"&temperatureC="+temp +"&humidity=" + humidity;  
    Serial.println(data);
    log_data(data);
-   if (pir_active = 1)
+   if (pir_active == 1)
        log_anyonein();
    
    delay(60*1000);
